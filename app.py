@@ -342,71 +342,74 @@ with tab_photo:
                         st.markdown(f'<div class="error-card"><div class="error-icon">⚠️</div><p class="error-msg">Gagal: {e}</p></div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════
-# TAB 3 — REAL-TIME
+# TAB 3 — REAL-TIME (WebRTC tanpa pencet tombol)
 # ══════════════════════════════════════════════════
 with tab_rt:
     st.markdown('<div class="step-label">Kamera — Scan Real-time</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="interval-label">⏱ Interval scan:</div>', unsafe_allow_html=True)
-    ms_options = {'1 dtk': 1000, '2 dtk': 2000, '3 dtk': 3000}
-    iv_cols = st.columns(3)
-    for i, (lbl, ms_val) in enumerate(ms_options.items()):
-        with iv_cols[i]:
-            is_act = st.session_state.rt_ms == ms_val
-            if st.button(lbl, key=f"iv_{ms_val}",
-                         type="primary" if is_act else "secondary"):
-                st.session_state.rt_ms = ms_val
-                st.rerun()
+    # Install streamlit-webrtc
+    try:
+        from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration
+        import av
+        WEBRTC_OK = True
+    except ImportError:
+        WEBRTC_OK = False
 
-    ctrl = st.columns(3)
-    with ctrl[0]:
-        if st.button("⏸  Pause", key="btn_pause",
-                     disabled=st.session_state.rt_paused):
-            st.session_state.rt_paused = True
-            st.rerun()
-    with ctrl[1]:
-        if st.button("▶  Resume", key="btn_resume",
-                     disabled=not st.session_state.rt_paused):
-            st.session_state.rt_paused = False
-            st.rerun()
-    with ctrl[2]:
-        if st.button("⏹  Stop", key="btn_stop"):
-            st.session_state.rt_paused = True
-            st.session_state.rt_result = None
-            st.rerun()
-
-    if st.session_state.rt_paused:
-        st.markdown(
-            '<div style="margin:8px 0 12px">'
-            '<span class="status-badge"><span class="pulse-dot paused"></span> ⏸ Dijeda</span>'
-            '</div>', unsafe_allow_html=True)
+    if not WEBRTC_OK:
+        st.markdown('''
+        <div class="error-card">
+          <div class="error-icon">⚠️</div>
+          <p class="error-msg">Install dulu: <code>pip install streamlit-webrtc</code></p>
+        </div>''', unsafe_allow_html=True)
     else:
-        st.markdown(
-            '<div style="margin:8px 0 12px">'
-            '<span class="status-badge"><span class="pulse-dot scanning"></span> 🔍 Scanning otomatis…</span>'
-            '</div>', unsafe_allow_html=True)
+        RTC_CONFIG = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
 
-    col_cam, col_res = st.columns(2)
+        result_slot = st.empty()
 
-    with col_cam:
-        rt_frame = st.camera_input(
-            "Arahkan kamera ke pisang",
-            label_visibility="collapsed",
-            key="rt_cam"
+        class BananaProcessor(VideoProcessorBase):
+            def __init__(self):
+                self.result = None
+                self.last_time = 0
+                self.interval = 2.0  # detik
+
+            def recv(self, frame):
+                import time
+                now = time.time()
+                img_bgr = frame.to_ndarray(format="bgr24")
+
+                if now - self.last_time >= self.interval and model:
+                    self.last_time = now
+                    try:
+                        from PIL import Image as PILImage
+                        import cv2
+                        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+                        pil     = PILImage.fromarray(img_rgb)
+                        pcls, conf, probs = predict_pil(model, pil)
+                        ts = datetime.datetime.now().strftime('%H:%M:%S')
+                        self.result = (pil, pcls, conf, probs, ts)
+                    except Exception:
+                        pass
+
+                return av.VideoFrame.from_ndarray(img_bgr, format="bgr24")
+
+        ctx = webrtc_streamer(
+            key="banana-rt",
+            video_processor_factory=BananaProcessor,
+            rtc_configuration=RTC_CONFIG,
+            media_stream_constraints={"video": True, "audio": False},
+            async_processing=True,
         )
 
-    with col_res:
-        res_slot = st.empty()
-        if st.session_state.rt_result:
-            res_slot.markdown(
-                f'<div class="rt-right fade-in">{st.session_state.rt_result}</div>',
+        if ctx.video_processor and ctx.video_processor.result:
+            pil, pcls, conf, probs, ts = ctx.video_processor.result
+            result_slot.markdown(
+                f'<div class="rt-right fade-in">{rt_result_html(pil, pcls, conf, probs, ts)}</div>',
                 unsafe_allow_html=True)
         else:
-            res_slot.markdown('''
+            result_slot.markdown('''
             <div class="rt-right">
               <div class="rt-result-empty">
-                <i class="ti ti-eye-off" style="font-size:32px;color:var(--muted);margin-bottom:8px;display:block"></i>
-                <p>Hasil scan akan muncul di sini</p>
+                <p>Klik START lalu arahkan kamera ke pisang</p>
               </div>
             </div>''', unsafe_allow_html=True)
 
