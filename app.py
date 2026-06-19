@@ -413,24 +413,4 @@ with tab_rt:
               </div>
             </div>''', unsafe_allow_html=True)
 
-    if rt_frame and not st.session_state.rt_paused and model:
-        pil = Image.open(rt_frame)
-        ts  = datetime.datetime.now().strftime('%H:%M:%S')
-        try:
-            pcls, conf, probs = predict_pil(model, pil)
-            st.session_state.rt_result = rt_result_html(pil, pcls, conf, probs, ts)
-            res_slot.markdown(
-                f'<div class="rt-right fade-in">{st.session_state.rt_result}</div>',
-                unsafe_allow_html=True)
-        except Exception as e:
-            res_slot.markdown(
-                f'<div class="rt-right"><div class="error-card">'
-                f'<div class="error-icon">⚠️</div>'
-                f'<p class="error-msg">Error: {e}</p>'
-                f'</div></div>', unsafe_allow_html=True)
-
-    if not st.session_state.rt_paused:
-        time.sleep(st.session_state.rt_ms / 1000)
-        st.rerun()
-
 st.markdown('</div>', unsafe_allow_html=True)
