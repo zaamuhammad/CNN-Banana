@@ -7,47 +7,7 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
 st.set_page_config(page_title="BananaLens", page_icon="🍌", layout="centered")
 
-# ── Constants ─────────────────────────────────────────────────────────────────
-IMG_SIZE  = (224, 224)
-LABEL_MAP = {'matang':'Matang','mentah':'Mentah','setengah-matang':'Setengah Matang'}
-EMOJI     = {'matang':'🍌','mentah':'🟢','setengah-matang':'🌿'}
-BADGE_CLS = {'matang':'badge-matang','mentah':'badge-mentah','setengah-matang':'badge-setengah'}
-FILL_CLS  = {'Matang':'fill-matang','Mentah':'fill-mentah','Setengah Matang':'fill-setengah'}
-
-NUTRISI = {
-    'matang':{
-        'Energi (Kalori)':'110 kcal / 100g','Karbohidrat Total':'28.0 g / 100g',
-        'Pati':'~1.0 g / 100g','Resistant Starch':'<1.0 g / 100g',
-        'Total Gula':'~15.0 g / 100g','Serat Diet':'4.5 g / 100g',
-        'Protein':'1.8 g / 100g','Lemak':'0.4 g / 100g','Kadar Air':'77.2%',
-        'Abu (Ash)':'0.80%','Kalium / K':'450 mg / 100g',
-        'Magnesium / Mg':'326.7 mg / 100g','Zinc / Zn':'0.27 mg / 100g',
-        'Mangan / Mn':'0.89 mg / 100g','Vitamin C':'10.3 mg / 100g',
-        'Vitamin B6':'Tinggi','Indeks Glikemik':'51',
-    },
-    'mentah':{
-        'Energi (Kalori)':'89 kcal / 100g','Karbohidrat Total':'22.8 g / 100g',
-        'Pati':'21.0 g / 100g','Resistant Starch':'~15.0 g / 100g',
-        'Total Gula':'<5.0 g / 100g','Serat Diet':'18.0 g / 100g',
-        'Protein':'1.3 g / 100g','Lemak':'0.3 g / 100g','Kadar Air':'73.5%',
-        'Abu (Ash)':'0.68%','Kalium / K':'<350 mg / 100g',
-        'Magnesium / Mg':'337.2 mg / 100g','Zinc / Zn':'0.15 mg / 100g',
-        'Mangan / Mn':'0.51 mg / 100g','Vitamin C':'~6.0 mg / 100g',
-        'Vitamin B6':'Rendah','Indeks Glikemik':'42',
-    },
-    'setengah-matang':{
-        'Energi (Kalori)':'99 kcal / 100g','Karbohidrat Total':'25.2 g / 100g',
-        'Pati':'~10.0 g / 100g','Resistant Starch':'~5.0 g / 100g',
-        'Total Gula':'~10.0 g / 100g','Serat Diet':'~9.0 g / 100g',
-        'Protein':'1.5 g / 100g','Lemak':'0.3 g / 100g','Kadar Air':'75.0%',
-        'Abu (Ash)':'0.74%','Kalium / K':'~400 mg / 100g',
-        'Magnesium / Mg':'331.0 mg / 100g','Zinc / Zn':'0.21 mg / 100g',
-        'Mangan / Mn':'0.70 mg / 100g','Vitamin C':'~8.0 mg / 100g',
-        'Vitamin B6':'Sedang','Indeks Glikemik':'46',
-    },
-}
-
-# ── CSS (persis style.css) ────────────────────────────────────────────────────
+# ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -56,7 +16,6 @@ st.markdown("""
 #MainMenu,footer,[data-testid="stToolbar"],[data-testid="stHeader"]{display:none!important}
 [data-testid="stAppViewContainer"]{background:#FAFAF8}
 [data-testid="stMain"] > div:first-child{padding-top:0!important}
-
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --yellow:#F5A623;--yellow-light:#FFF8E7;--yellow-border:#FFD77A;--yellow-deep:#C47C00;
@@ -67,7 +26,6 @@ st.markdown("""
 }
 body{font-family:var(--ffi);background:var(--bg);color:var(--text)}
 .app{max-width:960px;margin:0 auto;padding:28px 20px 56px}
-
 .header{text-align:center;margin-bottom:24px}
 .logo-row{display:inline-flex;align-items:center;gap:10px;margin-bottom:6px}
 .logo-icon-wrap{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#FFD600,#F5A623);display:flex;align-items:center;justify-content:center;font-size:20px}
@@ -76,22 +34,12 @@ body{font-family:var(--ffi);background:var(--bg);color:var(--text)}
 .header-desc{font-size:13px;color:var(--muted)}
 .model-warning{display:inline-block;margin-top:10px;background:#FFF8E7;border:0.5px solid var(--yellow-border);border-radius:var(--r-sm);padding:7px 14px;font-size:12px;color:#7A5800}
 .model-warning code{background:rgba(0,0,0,0.07);border-radius:4px;padding:1px 5px}
-
 .step-label{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);border-left:2px solid var(--yellow);padding-left:8px;margin-bottom:12px;margin-top:8px}
-
 .upload-area{padding:36px 24px;border:1.5px dashed #D1C9B0;border-radius:var(--r-lg);text-align:center;cursor:pointer;background:var(--yellow-light);margin-bottom:14px}
 .upload-big-icon{font-size:32px;margin-bottom:8px}
 .upload-area h3{font-family:var(--ff);font-size:15px;font-weight:600;margin-bottom:4px}
 .upload-area p{font-size:13px;color:var(--muted)}
 .upload-fmt{font-size:11px;color:#A89070;letter-spacing:0.05em;margin-top:10px}
-
-.cam-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:14px;margin-bottom:10px;overflow:hidden}
-.cam-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;color:var(--muted)}
-.cam-placeholder p{font-size:13px}
-
-.interval-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
-.interval-label{font-size:12px;color:var(--muted)}
-
 .rt-right{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:14px;min-height:200px}
 .rt-result-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:180px;color:var(--muted);text-align:center}
 .rt-result-empty p{font-size:13px}
@@ -103,20 +51,17 @@ body{font-family:var(--ffi);background:var(--bg);color:var(--text)}
 .rt-prob-wrap{margin-bottom:12px;padding-bottom:12px;border-bottom:0.5px solid var(--border)}
 .rt-nutrisi-title{font-family:var(--ff);font-size:12px;font-weight:600;margin-bottom:8px;color:var(--muted)}
 .rt-timestamp{font-size:10px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:0.5px solid var(--border)}
-
 .status-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,0,0,0.65);color:#fff;font-size:11px;border-radius:100px;padding:4px 12px;margin-bottom:10px}
 .pulse-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;animation:pulseDot 1.2s ease-in-out infinite}
 .pulse-dot.scanning{background:#F5A623}
 .pulse-dot.paused{background:#aaa;animation:none}
 @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.4)}}
-
 .preview-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:14px;margin-bottom:14px}
 .preview-inner{display:flex;gap:14px;align-items:center}
 .preview-inner img{width:80px;height:80px;border-radius:var(--r-md);object-fit:cover;border:0.5px solid var(--border);display:block;flex-shrink:0}
 .preview-info{flex:1;min-width:0}
 .preview-info h4{font-family:var(--ff);font-size:13px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .preview-info p{font-size:12px;color:var(--muted)}
-
 .result-top{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:18px;margin-bottom:10px}
 .result-top-inner{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid var(--border)}
 .result-img-wrap img{width:78px;height:78px;border-radius:var(--r-md);object-fit:cover;border:0.5px solid var(--border);display:block}
@@ -157,6 +102,46 @@ body{font-family:var(--ffi);background:var(--bg);color:var(--text)}
 .fade-in{animation:fadeUp 0.3s ease both}
 </style>
 """, unsafe_allow_html=True)
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+IMG_SIZE  = (224, 224)
+LABEL_MAP = {'matang':'Matang','mentah':'Mentah','setengah-matang':'Setengah Matang'}
+EMOJI     = {'matang':'🍌','mentah':'🟢','setengah-matang':'🌿'}
+BADGE_CLS = {'matang':'badge-matang','mentah':'badge-mentah','setengah-matang':'badge-setengah'}
+FILL_CLS  = {'Matang':'fill-matang','Mentah':'fill-mentah','Setengah Matang':'fill-setengah'}
+
+NUTRISI = {
+    'matang':{
+        'Energi (Kalori)':'110 kcal / 100g','Karbohidrat Total':'28.0 g / 100g',
+        'Pati':'~1.0 g / 100g','Resistant Starch':'<1.0 g / 100g',
+        'Total Gula':'~15.0 g / 100g','Serat Diet':'4.5 g / 100g',
+        'Protein':'1.8 g / 100g','Lemak':'0.4 g / 100g','Kadar Air':'77.2%',
+        'Abu (Ash)':'0.80%','Kalium / K':'450 mg / 100g',
+        'Magnesium / Mg':'326.7 mg / 100g','Zinc / Zn':'0.27 mg / 100g',
+        'Mangan / Mn':'0.89 mg / 100g','Vitamin C':'10.3 mg / 100g',
+        'Vitamin B6':'Tinggi','Indeks Glikemik':'51',
+    },
+    'mentah':{
+        'Energi (Kalori)':'89 kcal / 100g','Karbohidrat Total':'22.8 g / 100g',
+        'Pati':'21.0 g / 100g','Resistant Starch':'~15.0 g / 100g',
+        'Total Gula':'<5.0 g / 100g','Serat Diet':'18.0 g / 100g',
+        'Protein':'1.3 g / 100g','Lemak':'0.3 g / 100g','Kadar Air':'73.5%',
+        'Abu (Ash)':'0.68%','Kalium / K':'<350 mg / 100g',
+        'Magnesium / Mg':'337.2 mg / 100g','Zinc / Zn':'0.15 mg / 100g',
+        'Mangan / Mn':'0.51 mg / 100g','Vitamin C':'~6.0 mg / 100g',
+        'Vitamin B6':'Rendah','Indeks Glikemik':'42',
+    },
+    'setengah-matang':{
+        'Energi (Kalori)':'99 kcal / 100g','Karbohidrat Total':'25.2 g / 100g',
+        'Pati':'~10.0 g / 100g','Resistant Starch':'~5.0 g / 100g',
+        'Total Gula':'~10.0 g / 100g','Serat Diet':'~9.0 g / 100g',
+        'Protein':'1.5 g / 100g','Lemak':'0.3 g / 100g','Kadar Air':'75.4%',
+        'Abu (Ash)':'0.72%','Kalium / K':'~400 mg / 100g',
+        'Magnesium / Mg':'320.0 mg / 100g','Zinc / Zn':'0.20 mg / 100g',
+        'Mangan / Mn':'0.70 mg / 100g','Vitamin C':'~8.0 mg / 100g',
+        'Vitamin B6':'Sedang','Indeks Glikemik':'46',
+    },
+}
 
 # ── Model ─────────────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner="Memuat model CNN…")
@@ -362,7 +347,6 @@ with tab_photo:
 with tab_rt:
     st.markdown('<div class="step-label">Kamera — Scan Real-time</div>', unsafe_allow_html=True)
 
-    # Interval selector
     st.markdown('<div class="interval-label">⏱ Interval scan:</div>', unsafe_allow_html=True)
     ms_options = {'1 dtk': 1000, '2 dtk': 2000, '3 dtk': 3000}
     iv_cols = st.columns(3)
@@ -374,7 +358,6 @@ with tab_rt:
                 st.session_state.rt_ms = ms_val
                 st.rerun()
 
-    # Pause / Resume / Stop
     ctrl = st.columns(3)
     with ctrl[0]:
         if st.button("⏸  Pause", key="btn_pause",
@@ -392,7 +375,6 @@ with tab_rt:
             st.session_state.rt_result = None
             st.rerun()
 
-    # Status badge
     if st.session_state.rt_paused:
         st.markdown(
             '<div style="margin:8px 0 12px">'
@@ -404,7 +386,6 @@ with tab_rt:
             '<span class="status-badge"><span class="pulse-dot scanning"></span> 🔍 Scanning otomatis…</span>'
             '</div>', unsafe_allow_html=True)
 
-    # 2-col layout: kamera kiri | hasil kanan
     col_cam, col_res = st.columns(2)
 
     with col_cam:
@@ -429,7 +410,6 @@ with tab_rt:
               </div>
             </div>''', unsafe_allow_html=True)
 
-    # Auto-scan
     if rt_frame and not st.session_state.rt_paused and model:
         pil = Image.open(rt_frame)
         ts  = datetime.datetime.now().strftime('%H:%M:%S')
@@ -446,7 +426,6 @@ with tab_rt:
                 f'<p class="error-msg">Error: {e}</p>'
                 f'</div></div>', unsafe_allow_html=True)
 
-    # Auto-refresh hanya saat tidak di-pause
     if not st.session_state.rt_paused:
         time.sleep(st.session_state.rt_ms / 1000)
         st.rerun()
