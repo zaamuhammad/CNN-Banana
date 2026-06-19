@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BananaLens — Klasifikasi Kematangan Pisang</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-row">
+      <div class="logo-icon-wrap">🍌</div>
+      <div class="logo-name">Banana<span>Lens</span></div>
+    </div>
+    <div class="header-desc">Klasifikasi Kematangan Pisang — MobileNetV2 CNN</div>
+    {% if not model_loaded %}
+    <div class="model-warning">
+      ⚠️ Model belum dimuat — letakkan <strong>banana.h5</strong> di folder <code>model/</code>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- TAB SWITCHER -->
+  <div class="tab-row">
+    <button class="tab-btn active" id="tabUpload">
+      <i class="ti ti-upload"></i> Upload
+    </button>
+    <button class="tab-btn" id="tabPhoto">
+      <i class="ti ti-camera"></i> Kamera Foto
+    </button>
+    <button class="tab-btn" id="tabRealtime">
+      <i class="ti ti-scan"></i> Real-time
+    </button>
+  </div>
+
+  <!-- ========== PANEL UPLOAD ========== -->
+  <div class="panel" id="panelUpload">
+    <div class="step-label">Upload Gambar Pisang</div>
+    <div class="upload-area" id="dropZone">
+      <div class="upload-big-icon">📁</div>
+      <h3>Seret &amp; Lepas Gambar Pisang</h3>
+      <p>atau klik tombol di bawah untuk memilih file</p>
+      <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
+        <i class="ti ti-upload"></i> Pilih Gambar
+      </button>
+      <p class="upload-fmt">JPG · PNG · WEBP · Maks 16MB</p>
+      <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" />
+    </div>
+    <div class="preview-card" id="previewCard">
+      <div class="preview-inner">
+        <img id="previewImg" src="" alt="Preview" />
+        <div class="preview-info">
+          <h4 id="previewName"></h4>
+          <p id="previewSize"></p>
+          <div class="preview-actions">
+            <button class="btn-primary" id="btnAnalyze"><i class="ti ti-sparkles"></i> Analisis</button>
+            <button class="btn-ghost" id="btnCancel">Ganti</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PANEL KAMERA FOTO ========== -->
+  <div class="panel" id="panelPhoto" style="display:none">
+    <div class="step-label">Kamera — Ambil Foto</div>
+    <div class="cam-source-row">
+      <button class="cam-src-btn" data-panel="photo" data-facing="user"><i class="ti ti-device-mobile"></i> Depan</button>
+      <button class="cam-src-btn" data-panel="photo" data-facing="environment"><i class="ti ti-camera-rotate"></i> Belakang</button>
+      <button class="cam-src-btn" data-panel="photo" data-facing="desktop"><i class="ti ti-device-laptop"></i> Webcam</button>
+    </div>
+    <div class="cam-card">
+      <div class="cam-placeholder" id="photoPlaceholder">
+        <i class="ti ti-camera-off" style="font-size:38px;color:var(--muted);margin-bottom:8px"></i>
+        <p>Pilih sumber kamera di atas</p>
+      </div>
+      <video id="photoVideo" autoplay playsinline style="display:none;width:100%;border-radius:10px;max-height:340px;object-fit:cover;background:#000"></video>
+      <canvas id="photoCanvas" style="display:none"></canvas>
+      <div class="cam-controls" id="photoControls" style="display:none">
+        <button class="btn-capture" id="btnCapture"><i class="ti ti-camera"></i> Ambil Foto</button>
+        <button class="btn-ghost" id="btnStopPhoto"><i class="ti ti-player-stop"></i> Stop</button>
+      </div>
+    </div>
+    <div class="preview-card" id="photoPreviewCard" style="display:none">
+      <div class="preview-inner">
+        <img id="photoPreviewImg" src="" alt="Hasil foto" />
+        <div class="preview-info">
+          <h4>Foto dari Kamera</h4>
+          <p id="photoPreviewTime"></p>
+          <div class="preview-actions">
+            <button class="btn-primary" id="btnPhotoAnalyze"><i class="ti ti-sparkles"></i> Analisis</button>
+            <button class="btn-ghost" id="btnPhotoRetake"><i class="ti ti-refresh"></i> Foto Ulang</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PANEL REAL-TIME ========== -->
+  <div class="panel" id="panelRealtime" style="display:none">
+    <div class="step-label">Kamera — Scan Real-time</div>
+    <div class="cam-source-row">
+      <button class="cam-src-btn" data-panel="rt" data-facing="user"><i class="ti ti-device-mobile"></i> Depan</button>
+      <button class="cam-src-btn" data-panel="rt" data-facing="environment"><i class="ti ti-camera-rotate"></i> Belakang</button>
+      <button class="cam-src-btn" data-panel="rt" data-facing="desktop"><i class="ti ti-device-laptop"></i> Webcam</button>
+    </div>
+
+    <!-- Interval selector -->
+    <div class="interval-row">
+      <span class="interval-label"><i class="ti ti-clock"></i> Interval scan:</span>
+      <div class="interval-btns">
+        <button class="interval-btn" data-ms="1000">1 dtk</button>
+        <button class="interval-btn active" data-ms="2000">2 dtk</button>
+        <button class="interval-btn" data-ms="3000">3 dtk</button>
+      </div>
+    </div>
+
+    <!-- Layout 2 kolom: video kiri, hasil kanan -->
+    <div class="rt-layout">
+      <div class="rt-left">
+        <div class="cam-card rt-cam-card">
+          <div class="cam-placeholder" id="rtPlaceholder">
+            <i class="ti ti-scan" style="font-size:38px;color:var(--muted);margin-bottom:8px"></i>
+            <p>Pilih sumber kamera di atas</p>
+          </div>
+          <div class="rt-video-wrap" id="rtVideoWrap" style="display:none">
+            <video id="rtVideo" autoplay playsinline style="width:100%;border-radius:10px;object-fit:cover;background:#000;display:block"></video>
+            <canvas id="rtCanvas" style="display:none"></canvas>
+            <!-- Scanning overlay -->
+            <div class="scan-overlay" id="scanOverlay">
+              <div class="scan-line"></div>
+              <div class="scan-corner tl"></div>
+              <div class="scan-corner tr"></div>
+              <div class="scan-corner bl"></div>
+              <div class="scan-corner br"></div>
+            </div>
+            <!-- Status badge di atas video -->
+            <div class="rt-status-badge" id="rtStatusBadge">
+              <span class="pulse-dot"></span> Menunggu kamera…
+            </div>
+          </div>
+          <div class="cam-controls" id="rtControls" style="display:none">
+            <button class="btn-rt-pause" id="btnRtPause" style="display:none">
+              <i class="ti ti-player-pause"></i> Pause
+            </button>
+            <button class="btn-rt-resume" id="btnRtResume" style="display:none">
+              <i class="ti ti-player-play"></i> Resume
+            </button>
+            <button class="btn-ghost" id="btnStopRt"><i class="ti ti-player-stop"></i> Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hasil real-time di kanan -->
+      <div class="rt-right" id="rtRight">
+        <div class="rt-result-empty" id="rtResultEmpty">
+          <i class="ti ti-eye-off" style="font-size:32px;color:var(--muted);margin-bottom:8px"></i>
+          <p>Hasil scan akan muncul di sini</p>
+        </div>
+        <div class="rt-result-card" id="rtResultCard" style="display:none">
+          <div class="rt-thumb-row">
+            <img id="rtThumb" src="" alt="frame" />
+            <div class="rt-kelas-info">
+              <div class="rt-kelas" id="rtKelas">—</div>
+              <span class="badge" id="rtBadge">—</span>
+              <div class="rt-conf-row">
+                <div class="conf-bar-outer"><div class="conf-bar-inner" id="rtConfBar"></div></div>
+                <span class="conf-pct" id="rtConfPct">—</span>
+              </div>
+            </div>
+          </div>
+          <div class="rt-prob-wrap">
+            <div class="prob-section-title">Probabilitas</div>
+            <div class="prob-grid" id="rtProbGrid"></div>
+          </div>
+          <div class="rt-nutrisi-wrap">
+            <div class="rt-nutrisi-title" id="rtNutrisiTitle"></div>
+            <div class="nutrisi-grid" id="rtNutrisiGrid"></div>
+          </div>
+          <div class="rt-timestamp">🕐 Update terakhir: <span id="rtTimestamp">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== RESULT PANEL (Upload & Foto) ========== -->
+  <div class="result-wrap" id="resultWrap">
+    <div class="step-label" style="margin-top:8px">Hasil Klasifikasi</div>
+    <div class="loading-card" id="loadingCard">
+      <div class="spinner-ring"></div>
+      <p>Menganalisis gambar pisang…</p>
+    </div>
+    <div class="result-card-main" id="resultMain">
+      <div class="result-top">
+        <div class="result-top-inner">
+          <div class="result-img-wrap">
+            <img id="resultImg" src="" alt="Hasil" />
+          </div>
+          <div class="result-info">
+            <div class="result-kelas" id="resultKelas">—</div>
+            <div class="result-badge-row"><span class="badge" id="resultBadge">—</span></div>
+            <div class="conf-label">Kepercayaan Model</div>
+            <div class="conf-row">
+              <div class="conf-bar-outer"><div class="conf-bar-inner" id="confBar"></div></div>
+              <div class="conf-pct" id="confPct">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="prob-section">
+          <div class="prob-section-title">Distribusi Probabilitas</div>
+          <div class="prob-grid" id="probGrid"></div>
+        </div>
+      </div>
+      <div class="info-card" style="margin-bottom:14px">
+        <div class="info-card-title"><i class="ti ti-leaf"></i> Kandungan Nutrisi <span id="nutrisiSubtitle"></span></div>
+        <div class="nutrisi-grid" id="nutrisiGrid"></div>
+      </div>
+      <div class="bottom-action">
+        <button class="btn-ghost" id="btnReset">← Analisis Lagi</button>
+      </div>
+    </div>
+    <div class="error-card" id="errorCard">
+      <div class="error-icon">⚠️</div>
+      <p id="errorMsg"></p>
+      <button class="btn-ghost" id="btnResetErr">← Coba Lagi</button>
+    </div>
+  </div>
+
+</div>
+<script src="/static/js/main.js"></script>
+</body>
+</html>
